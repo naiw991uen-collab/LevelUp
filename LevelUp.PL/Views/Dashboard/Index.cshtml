@@ -1,0 +1,167 @@
+@using System.Globalization
+@model LevelUp.BLL.Services.Dashboard.ViewModel.DashboardViewModel
+@{
+    var modeText = TextHelpers.ModeText(Model.Mode);
+    var theMode = $"ال{modeText}";
+    var isMulti = Model.Mode == GameMode.Multi;
+    ViewData["Title"] = $"لوحة {theMode}";
+
+    var arabic = CultureInfo.GetCultureInfo("ar-EG");
+    var dayDate = Model.Day.ToDateTime(TimeOnly.MinValue);
+    var dayTitle = $"{arabic.DateTimeFormat.GetDayName(dayDate.DayOfWeek)} {dayDate.Day} {arabic.DateTimeFormat.GetMonthName(dayDate.Month)} {dayDate.Year}";
+
+    string Money(decimal amount) => amount.ToString("#,0.##", CultureInfo.InvariantCulture);
+    string Number(decimal amount) => amount.ToString("0.##", CultureInfo.InvariantCulture);
+    string HoursMinutes(int seconds) => $"{seconds / 3600}:{seconds % 3600 / 60:00}";
+    string ModePill(GameMode m) => m == GameMode.Multi ? "p-purple" : "p-blue";
+
+    var rateValue = ViewData.ModelState["HourlyRate"]?.AttemptedValue ?? Number(Model.CurrentRate);
+
+    var sessionParts = new List<string>();
+    if (Model.ClosedCount > 0) sessionParts.Add($"{Model.ClosedCount} منتهية");
+    if (Model.RunningCount > 0) sessionParts.Add($"{Model.RunningCount} شغالة");
+    if (Model.StoppedCount > 0) sessionParts.Add($"{Model.StoppedCount} مستنية الحساب");
+}
+
+    <div class="head">
+      <div>
+        <h1>لوحة @theMode</h1>
+        <p class="sub">يوم العمل: @dayTitle · من 6 الصبح</p>
+      </div>
+
+      <form class="panel form-line rate-form" method="post" asp-controller="Dashboard" asp-action="UpdateRate" autocomplete="off" novalidate>
+        <input type="hidden" name="Mode" value="@Model.Mode">
+        <div class="field">
+          <label for="HourlyRate">سعر ساعة @theMode (ج.م)</label>
+          <input class="in" id="HourlyRate" name="HourlyRate" type="number" min="1" step="1" value="@rateValue"
+                 data-val="true" data-val-required="اكتب سعر الساعة"
+                 data-val-range="السعر لازم يكون أكبر من صفر" data-val-range-min="1" data-val-range-max="100000">
+        </div>
+        <button class="btn" type="submit">حفظ السعر</button>
+        <div class="msg-line">
+          @Html.ValidationMessage("HourlyRate", new { @class = "msg err" })
+          @if (TempData["SuccessMessage"] is string success)
+          {
+            <span class="msg ok" role="status">@success</span>
+          }
+          @if (TempData["ErrorMessage"] is string error)
+          {
+            <span class="msg err" role="status">@error</span>
+          }
+          <span class="msg dim">السعر الجديد بيتطبق على الجلسات أو التحويلات اللي هتحصل بعد الحفظ</span>
+        </div>
+      </form>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi">
+        <div class="kpi-top">
+          <span class="l">دخل @theMode النهارده</span>
+          <span class="ic @(isMulti ? "purple" : "blue")"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M2 10h20M16 15h2"/></svg></span>
+        </div>
+        <span class="v">@Money(Model.Total) <small>ج.م</small></span>
+        <span class="n">لعب @Money(Model.PlayTotal) · مشروبات @Money(Model.DrinksTotal)</span>
+      </div>
+      <div class="kpi">
+        <div class="kpi-top">
+          <span class="l">ساعات @theMode</span>
+          <span class="ic"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+        </div>
+        <span class="v">@HoursMinutes(Model.Seconds) <small>ساعة</small></span>
+        <span class="n">سعر الساعة الحالي @Money(Model.CurrentRate) ج.م</span>
+      </div>
+      <div class="kpi">
+        <div class="kpi-top">
+          <span class="l">جلسات @theMode</span>
+          <span class="ic amber"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg></span>
+        </div>
+        <span class="v">@Model.SessionCount <small>جلسة</small></span>
+        <span class="n">@(sessionParts.Count > 0 ? string.Join(" · ", sessionParts) : "مفيش جلسات لسه")</span>
+      </div>
+      <div class="kpi live">
+        <div class="kpi-top">
+          <span class="l">شغالين @modeText دلوقتي</span>
+          <span class="ic green"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span>
+        </div>
+        <span class="v">@Model.RunningNowCount <small>من @Model.ActiveRoomCount غرفة</small></span>
+        <a asp-controller="Device" asp-action="Index" asp-route-filter="@Model.Mode">افتح صفحة الأجهزة</a>
+      </div>
+    </div>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>تفاصيل الغرف النهارده (وقت @theMode بس)</h2>
+        <span class="muted">المشروبات بتتحسب على النمط اللي الجلسة بدأت بيه</span>
+      </div>
+      @if (Model.Rows.Count == 0)
+      {
+        <div class="empty">مفيش غرف، ضيف أول غرفة من <a asp-controller="Room" asp-action="Index">صفحة الغرف</a></div>
+      }
+      else
+      {
+      <div class="scroll">
+        <table class="t">
+          <thead>
+            <tr>
+              <th>الغرفة</th>
+              <th>الحالة دلوقتي</th>
+              <th>ساعات اللعب</th>
+              <th>دخل اللعب</th>
+              <th>المشروبات اللي اتطلبت</th>
+              <th>دخل المشروبات</th>
+              <th>الإجمالي</th>
+            </tr>
+          </thead>
+          <tbody>
+            @foreach (var row in Model.Rows)
+            {
+            <tr class="@(row.IsActive ? null : "off")">
+              <td class="b">@row.RoomName</td>
+              <td>
+                @if (!row.IsActive)
+                {
+                  <span class="pill xs p-red">معطلة</span>
+                }
+                else if (row.Status == SessionStatus.Running && row.CurrentMode is GameMode current)
+                {
+                  <span class="pill xs p-green">شغالة</span> <span class="pill xs @ModePill(current)">@TextHelpers.ModeText(current)</span>
+                }
+                else if (row.Status == SessionStatus.Stopped)
+                {
+                  <span class="pill xs p-amber">حساب</span>
+                }
+                else
+                {
+                  <span class="pill xs p-gray">فاضية</span>
+                }
+              </td>
+              <td>@HoursMinutes(row.Seconds)</td>
+              <td>@Money(row.PlayCost) ج.م</td>
+              @if (row.Drinks.Count == 0)
+              {
+                <td class="dim">—</td>
+              }
+              else
+              {
+                <td class="soft">@string.Join("، ", row.Drinks.Select(d => $"{d.Name} ×{d.Quantity}"))</td>
+              }
+              <td>@Money(row.DrinksTotal) ج.م</td>
+              <td class="b">@Money(row.Total) ج.م</td>
+            </tr>
+            }
+          </tbody>
+          <tfoot>
+            <tr>
+              <td>الإجمالي</td>
+              <td></td>
+              <td>@HoursMinutes(Model.Seconds)</td>
+              <td>@Money(Model.PlayTotal) ج.م</td>
+              <td></td>
+              <td>@Money(Model.DrinksTotal) ج.م</td>
+              <td class="tot-blue">@Money(Model.Total) ج.م</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      }
+    </section>

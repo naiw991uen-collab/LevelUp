@@ -1,0 +1,139 @@
+@using System.Globalization
+@using LevelUp.BLL.Services.Sessions.Enum
+@model LevelUp.BLL.Services.Sessions.ViewModel.SessionIndexViewModel
+@{
+    ViewData["Title"] = "الجلسات المنتهية";
+
+    var arabic = CultureInfo.GetCultureInfo("ar-EG");
+    var dayDate = Model.Day.ToDateTime(TimeOnly.MinValue);
+    var dayTitle = $"{arabic.DateTimeFormat.GetDayName(dayDate.DayOfWeek)} {dayDate.Day} {arabic.DateTimeFormat.GetMonthName(dayDate.Month)} {dayDate.Year}";
+
+    string Money(decimal amount) => amount.ToString("#,0.##", CultureInfo.InvariantCulture);
+    string Number(decimal amount) => amount.ToString("0.##", CultureInfo.InvariantCulture);
+    string HoursMinutes(int seconds) => $"{seconds / 3600}:{seconds % 3600 / 60:00}";
+    string TimeOfDay(DateTime? time) => time is null ? "" : $"{time:h:mm} {(time.Value.Hour < 12 ? "ص" : "م")}";
+    string ModePill(GameMode m) => m == GameMode.Multi ? "p-purple" : "p-blue";
+
+    var modes = new (SessionModeFilter Value, string Text)[]
+    {
+        (SessionModeFilter.All, "الكل"),
+        (SessionModeFilter.Single, "فيها سنجل"),
+        (SessionModeFilter.Multi, "فيها ملتي"),
+        (SessionModeFilter.Mixed, "اتحولت (سنجل ↔ ملتي)")
+    };
+}
+
+    <div>
+      <h1>الجلسات المنتهية</h1>
+      <p class="sub">كل جلسة اتقفلت وحسابها اتحصّل</p>
+    </div>
+
+    <form class="panel filters form-line" method="get" asp-controller="Session" asp-action="Index" autocomplete="off">
+      <div class="field">
+        <label for="Date">يوم العمل</label>
+        <input class="in" id="Date" name="Date" type="date" value="@Model.Day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)">
+      </div>
+      <div class="field">
+        <label for="Mode">النمط</label>
+        <select class="in" id="Mode" name="Mode">
+          @foreach (var mode in modes)
+          {
+              <option value="@mode.Value" selected="@(mode.Value == Model.Filter.Mode)">@mode.Text</option>
+          }
+        </select>
+      </div>
+      <div class="field">
+        <label for="RoomId">الغرفة</label>
+        <select class="in" id="RoomId" name="RoomId">
+          <option value="" selected="@(Model.Filter.RoomId is null)">كل الغرف</option>
+          @foreach (var room in Model.Rooms)
+          {
+              <option value="@room.Id" selected="@(room.Id == Model.Filter.RoomId)">@room.Name</option>
+          }
+        </select>
+      </div>
+      <button class="btn" type="submit">عرض</button>
+    </form>
+
+    @if (TempData["ErrorMessage"] is string error)
+    {
+      <span class="msg err" role="status">@error</span>
+    }
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>جلسات @dayTitle</h2>
+        <span class="muted">@Model.Count جلسة</span>
+      </div>
+      @if (Model.Count == 0)
+      {
+        <div class="empty">مفيش جلسات منتهية بالفلتر ده</div>
+      }
+      else
+      {
+      <div class="scroll">
+        <table class="t">
+          <thead>
+            <tr>
+              <th>الغرفة</th>
+              <th>النمط</th>
+              <th>من</th>
+              <th>إلى</th>
+              <th>المدة</th>
+              <th>سعر البلايستيشن</th>
+              <th>المشروبات</th>
+              <th>سعر المشروبات</th>
+              <th>الإجمالي</th>
+            </tr>
+          </thead>
+          <tbody>
+            @foreach (var row in Model.Rows)
+            {
+            <tr>
+              <td class="b">@row.RoomName</td>
+              <td>
+                @for (var i = 0; i < row.Modes.Count; i++)
+                {
+                    if (i > 0)
+                    {
+                        <span class="arrow">←</span>
+                    }
+                    <span class="pill xs @ModePill(row.Modes[i])">@TextHelpers.ModeText(row.Modes[i])</span>
+                }
+              </td>
+              <td>@TimeOfDay(row.StartedAt)</td>
+              <td>@TimeOfDay(row.EndedAt)</td>
+              <td>@HoursMinutes(row.PlayedSeconds)</td>
+              <td>@Money(row.PlayCost) ج.م <span class="detail">(@(row.Parts.Count == 1
+                  ? $"{Number(row.Parts[0].HourlyRate)}/س"
+                  : string.Join(" + ", row.Parts.Select(p => $"{TextHelpers.ModeText(p.Mode)} {HoursMinutes(p.Seconds)}"))))</span></td>
+              @if (row.Drinks.Count == 0)
+              {
+                <td class="dim">—</td>
+              }
+              else
+              {
+                <td class="soft">@string.Join("، ", row.Drinks.Select(d => $"{d.Name} ×{d.Quantity}"))</td>
+              }
+              <td>@Money(row.DrinksTotal) ج.م</td>
+              <td class="b">@Money(row.Total) ج.م</td>
+            </tr>
+            }
+          </tbody>
+          <tfoot>
+            <tr>
+              <td>الإجمالي</td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td>@HoursMinutes(Model.TotalSeconds)</td>
+              <td>@Money(Model.PlayTotal) ج.م</td>
+              <td></td>
+              <td>@Money(Model.DrinksTotal) ج.م</td>
+              <td class="tot-blue">@Money(Model.Total) ج.م</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      }
+    </section>

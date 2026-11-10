@@ -1,0 +1,171 @@
+@using System.Globalization
+@using LevelUp.BLL.Services.Devices.ViewModel
+@model (DeviceCardViewModel Card, DeviceIndexViewModel Page)
+@{
+    var card = Model.Card;
+    var board = Model.Page;
+    var mode = card.CurrentMode ?? card.DefaultMode;
+    var otherMode = mode == GameMode.Multi ? GameMode.Single : GameMode.Multi;
+
+    string Money(decimal amount) => amount.ToString("#,0.##", CultureInfo.InvariantCulture);
+    string Number(decimal amount) => amount.ToString("0.##", CultureInfo.InvariantCulture);
+    string Clock(int seconds) => $"{seconds / 3600:00}:{seconds % 3600 / 60:00}:{seconds % 60:00}";
+    string HoursMinutes(int seconds) => $"{seconds / 3600}:{seconds % 3600 / 60:00}";
+    string TimeOfDay(DateTime? time) => time is null ? "" : $"{time:h:mm} {(time.Value.Hour < 12 ? "ص" : "م")}";
+    string ModePill(GameMode m) => m == GameMode.Multi ? "p-purple" : "p-blue";
+
+    async Task Drinks()
+    {
+        <div class="dl">
+          <div class="dl-title">@(card.IsIdle ? "المشروبات (قبل البدء)" : "المشروبات")</div>
+          @if (card.Drinks.Count == 0)
+          {
+              <span class="dl-empty">مفيش مشروبات لسه</span>
+          }
+          @foreach (var drink in card.Drinks)
+          {
+              <div class="dl-row">
+                <span>@drink.Name × @drink.Quantity</span>
+                <span class="dl-meta">
+                  <span class="muted">@Money(drink.Total) ج.م</span>
+                  <form method="post" asp-controller="Device" asp-action="RemoveDrink" asp-route-filter="@board.Filter">
+                    <input type="hidden" name="RoomId" value="@card.RoomId"><input type="hidden" name="DrinkId" value="@drink.DrinkId">
+                    <button type="submit" class="x" aria-label="شيل @drink.Name">×</button>
+                  </form>
+                </span>
+              </div>
+          }
+        </div>
+        if (board.AvailableDrinks.Count > 0)
+        {
+            <form class="add" method="post" asp-controller="Device" asp-action="AddDrink" asp-route-filter="@board.Filter">
+              <input type="hidden" name="RoomId" value="@card.RoomId">
+              <select class="in" name="DrinkId" aria-label="اختيار مشروب لـ@(card.RoomName)">
+                @foreach (var option in board.AvailableDrinks)
+                {
+                    <option value="@option.Id">@option.Name — @Money(option.Price) ج.م</option>
+                }
+              </select>
+              <button type="submit" class="btn ghost sm">إضافة</button>
+            </form>
+        }
+    }
+}
+
+@if (card.IsIdle)
+{
+    var defaultRate = board.RateOf(card.DefaultMode);
+
+    <article class="device-card idle">
+        <div class="card-head">
+          <h2>@card.RoomName</h2>
+          <div class="tags"><span class="pill p-gray">فاضي</span></div>
+        </div>
+        <div class="modepick">
+          <label for="Mode-@card.RoomId">هيلعب إيه؟</label>
+          <select class="in" id="Mode-@card.RoomId" name="Mode" form="start-@card.RoomId">
+            @foreach (var option in new[] { GameMode.Single, GameMode.Multi })
+            {
+                <option value="@option" data-label="@TextHelpers.ModeText(option)" data-rate="@Money(board.RateOf(option))" selected="@(option == card.DefaultMode)">@TextHelpers.ModeText(option) — @Money(board.RateOf(option)) ج.م/ساعة</option>
+            }
+          </select>
+        </div>
+        <div class="timerbox">
+          <div class="timer">00:00:00</div>
+          <div class="c">سعر اللعب: <b>0 ج.م</b> · <span data-mode-rate>@TextHelpers.ModeText(card.DefaultMode) @Money(defaultRate) ج.م/ساعة</span></div>
+        </div>
+        @{ await Drinks(); }
+        <form id="start-@card.RoomId" method="post" asp-controller="Device" asp-action="Start" asp-route-filter="@board.Filter">
+          <input type="hidden" name="RoomId" value="@card.RoomId">
+          <button type="submit" class="btn green big" data-start-label>بدء @TextHelpers.ModeText(card.DefaultMode)</button>
+        </form>
+    </article>
+}
+else if (card.IsRunning)
+{
+    <article class="device-card running" data-elapsed="@card.ElapsedSeconds" data-segment-elapsed="@card.SegmentElapsedSeconds" data-base-cost="@Number(card.BaseCost)" data-rate="@Number(card.CurrentRate)">
+        <div class="card-head">
+          <h2>@card.RoomName</h2>
+          <div class="tags"><span class="pill @ModePill(mode)">@TextHelpers.ModeText(mode)</span><span class="pill p-green">شغال</span></div>
+        </div>
+        <div class="timerbox">
+          <div class="timer">@Clock(card.ElapsedSeconds)</div>
+          <div class="c">سعر اللعب: <b data-cost>@Money(card.PlayCost) ج.م</b> · @TextHelpers.ModeText(mode) @Money(card.CurrentRate) ج.م/ساعة</div>
+          @if (card.HasSwitched)
+          {
+              <div class="segs">
+                @for (var i = 0; i < card.Segments.Count; i++)
+                {
+                    var segment = card.Segments[i];
+                    if (i > 0)
+                    {
+                        <span class="arrow">←</span>
+                    }
+                    if (segment.IsCurrent)
+                    {
+                        <span>@TextHelpers.ModeText(segment.Mode) <span data-segment-live>@HoursMinutes(segment.Seconds)</span> (دلوقتي)</span>
+                    }
+                    else
+                    {
+                        <span>@TextHelpers.ModeText(segment.Mode) @HoursMinutes(segment.Seconds)</span>
+                    }
+                }
+              </div>
+          }
+        </div>
+        @{ await Drinks(); }
+        <div class="two">
+          <form method="post" asp-controller="Device" asp-action="SwitchMode" asp-route-filter="@board.Filter">
+            <input type="hidden" name="RoomId" value="@card.RoomId"><input type="hidden" name="Mode" value="@otherMode">
+            <button type="submit" class="btn @(otherMode == GameMode.Multi ? "ghost-purple" : "ghost-blue")" title="الوقت اللي فات بيتحسب بسعره، والجاي بسعر @TextHelpers.ModeText(otherMode)">تحويل ل@(TextHelpers.ModeText(otherMode))</button>
+          </form>
+          <form class="stop" method="post" asp-controller="Device" asp-action="Stop" asp-route-filter="@board.Filter">
+            <input type="hidden" name="RoomId" value="@card.RoomId">
+            <button type="submit" class="btn red stop-btn">إيقاف</button>
+          </form>
+        </div>
+    </article>
+}
+else
+{
+    <article class="device-card bill" data-elapsed="@card.ElapsedSeconds" data-stopped="true">
+        <div class="card-head">
+          <h2>@card.RoomName</h2>
+          <div class="tags"><span class="pill @ModePill(mode)">@TextHelpers.ModeText(mode)</span><span class="pill p-amber">في انتظار الحساب</span></div>
+        </div>
+        <div class="timerbox">
+          <div class="timer">@Clock(card.ElapsedSeconds)</div>
+          <div class="c">سعر اللعب: <b>@Money(card.PlayCost) ج.م</b> · @TextHelpers.ModeText(mode) @Money(card.CurrentRate) ج.م/ساعة</div>
+        </div>
+        <div class="billbox">
+          <div class="bill-title">حساب الجلسة · من @TimeOfDay(card.StartedAt) لـ @TimeOfDay(card.StoppedAt)</div>
+          @foreach (var segment in card.Segments)
+          {
+              <div class="r"><span>@TextHelpers.ModeText(segment.Mode) @HoursMinutes(segment.Seconds) × @Money(segment.HourlyRate) ج.م/ساعة</span><span>@Money(segment.Cost) ج.م</span></div>
+          }
+          @if (card.HasSwitched)
+          {
+              <div class="r muted"><span>إجمالي اللعب</span><span>@Money(card.PlayCost) ج.م</span></div>
+          }
+          @foreach (var drink in card.Drinks)
+          {
+              <div class="r"><span>@drink.Name × @drink.Quantity (@Money(drink.UnitPrice) ج.م)</span><span>@Money(drink.Total) ج.م</span></div>
+          }
+          @if (card.Drinks.Any())
+          {
+              <div class="r muted"><span>إجمالي المشروبات</span><span>@Money(card.DrinksTotal) ج.م</span></div>
+          }
+          <div class="tot"><span>الإجمالي</span><b>@Money(card.Total) ج.م</b></div>
+        </div>
+        <div class="two">
+          <form method="post" asp-controller="Device" asp-action="Resume" asp-route-filter="@board.Filter">
+            <input type="hidden" name="RoomId" value="@card.RoomId">
+            <button type="submit" class="btn ghost-gray">رجوع للعب</button>
+          </form>
+          <form class="wide" method="post" asp-controller="Device" asp-action="Close" asp-route-filter="@board.Filter">
+            <input type="hidden" name="RoomId" value="@card.RoomId">
+            <button type="submit" class="btn">تم التحصيل · إنهاء الجلسة</button>
+          </form>
+        </div>
+    </article>
+}

@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="LevelUp.BLL/LevelUp.BLL.csproj" />
+  <Project Path="LevelUp.DAL/LevelUp.DAL.csproj" />
+  <Project Path="LevelUp.PL/LevelUp.PL.csproj" />
+  <Project Path="LevelUp.Tests/LevelUp.Tests.csproj" />
+</Solution>

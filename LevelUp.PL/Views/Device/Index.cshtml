@@ -1,0 +1,72 @@
+@using System.Globalization
+@using LevelUp.BLL.Services.Devices.Enum
+@model LevelUp.BLL.Services.Devices.ViewModel.DeviceIndexViewModel
+@{
+    ViewData["Title"] = "الأجهزة";
+
+    string Money(decimal amount) => amount.ToString("#,0.##", CultureInfo.InvariantCulture);
+
+    var tabs = new (DeviceFilter Filter, string Text, string Color)[]
+    {
+        (DeviceFilter.All, "الكل", "t-all"),
+        (DeviceFilter.Running, "شغال", "t-running"),
+        (DeviceFilter.Idle, "فاضي", "t-idle"),
+        (DeviceFilter.Single, "سنجل", "t-single"),
+        (DeviceFilter.Multi, "ملتي", "t-multi")
+    };
+    var cards = Model.Cards.ToList();
+}
+
+    <div class="head">
+      <div>
+        <h1>الأجهزة</h1>
+        <p class="sub">اختار سنجل أو ملتي والمشروبات ودوس بدء. تقدر تحوّل النمط أو تضيف مشروبات والجهاز شغال.</p>
+      </div>
+      <div class="chips">
+        <span class="pill p-blue">سنجل @Money(Model.SingleRate) ج.م/ساعة</span>
+        <span class="pill p-purple">ملتي @Money(Model.MultiRate) ج.م/ساعة</span>
+        @if (Model.StoppedCount > 0)
+        {
+            <span class="pill p-amber">مستني الحساب @Model.StoppedCount</span>
+        }
+      </div>
+    </div>
+
+    <nav class="tabs" aria-label="فلترة الأجهزة">
+      @foreach (var tab in tabs)
+      {
+          var on = tab.Filter == Model.Filter;
+          <a class="tab@(on ? $" on {tab.Color}" : "")" aria-current="@(on ? "page" : null)" asp-controller="Device" asp-action="Index" asp-route-filter="@tab.Filter">@tab.Text <span class="n">@Model.Count(tab.Filter)</span></a>
+      }
+    </nav>
+
+    @if (TempData["SuccessMessage"] is string success)
+    {
+      <span class="msg ok" role="status">@success</span>
+    }
+    @if (TempData["ErrorMessage"] is string error)
+    {
+      <span class="msg err" role="status">@error</span>
+    }
+
+    @if (Model.AllCards.Count == 0)
+    {
+      <div class="panel empty">مفيش غرف مفعّلة. ضيف غرفة من <a asp-controller="Room" asp-action="Index">صفحة الغرف</a>.</div>
+    }
+    else if (cards.Count == 0)
+    {
+      <div class="panel empty">مفيش أجهزة في القسم ده دلوقتي</div>
+    }
+    else
+    {
+      <div class="cards">
+        @foreach (var card in cards)
+        {
+            <partial name="_DeviceCard" model="(card, Model)" />
+        }
+      </div>
+    }
+
+@section Scripts {
+    <script src="~/js/timer.js"></script>
+}

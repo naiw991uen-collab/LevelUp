@@ -1,0 +1,120 @@
+@model LevelUp.BLL.Services.Drinks.ViewModel.DrinkIndexViewModel
+@{
+    ViewData["Title"] = "المشروبات";
+
+    string PriceText(decimal price) => price.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+}
+
+    <div>
+      <h1>المشروبات</h1>
+      <p class="sub">المشروبات المتوفرة بس هي اللي بتظهر في صفحة الأجهزة</p>
+    </div>
+
+    <section class="panel pad">
+      <h2>إضافة مشروب جديد</h2>
+      <form class="form-line" method="post" asp-controller="Drink" asp-action="Add" autocomplete="off" novalidate>
+        <div class="field f-wide">
+          <label for="Name">اسم المشروب</label>
+          <input class="in" id="Name" name="Name" type="text" placeholder="مثلاً: عصير برتقال" value="@Model.NewDrink.Name"
+                 data-val="true" data-val-required="اكتب اسم المشروب"
+                 data-val-length="اسم المشروب طويل، أقصى حاجة 50 حرف" data-val-length-max="50">
+        </div>
+        <div class="field f-price">
+          <label for="Price">السعر (ج.م)</label>
+          <input class="in" id="Price" name="Price" type="number" min="1" placeholder="0"
+                 value="@(Model.NewDrink.Price is decimal p ? PriceText(p) : null)"
+                 data-val="true" data-val-required="السعر لازم يكون أكبر من صفر"
+                 data-val-range="السعر لازم يكون أكبر من صفر" data-val-range-min="1" data-val-range-max="100000">
+        </div>
+        <button class="btn" type="submit">تأكيد</button>
+        <div class="msg-line">
+          @Html.ValidationMessage("Name", new { @class = "msg err" })
+          @Html.ValidationMessage("Price", new { @class = "msg err" })
+        </div>
+      </form>
+      @if (TempData["SuccessMessage"] is string success)
+      {
+        <span class="msg ok" role="status">@success</span>
+      }
+      @if (TempData["ErrorMessage"] is string error)
+      {
+        <span class="msg err" role="status">@error</span>
+      }
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>قائمة المشروبات</h2>
+        <span class="muted">@Model.TotalCount مشروب · @Model.AvailableCount متوفر</span>
+      </div>
+      @if (Model.TotalCount == 0)
+      {
+        <div class="empty">مفيش مشروبات، ضيف أول مشروب من فوق</div>
+      }
+      else
+      {
+      <div class="scroll">
+        <table class="t">
+          <thead>
+            <tr>
+              <th>المشروب</th>
+              <th>السعر</th>
+              <th>الحالة</th>
+              <th>إجراءات</th>
+            </tr>
+          </thead>
+          <tbody>
+            @foreach (var drink in Model.Drinks)
+            {
+              var editing = Model.EditId == drink.Id;
+            <tr class="@(drink.IsAvailable ? null : "off")">
+              <td class="b">@drink.Name</td>
+              <td>
+                @if (editing)
+                {
+                <input class="in in-price" form="edit-price-@drink.Id" name="Price" type="number" min="1" value="@PriceText(drink.Price)" aria-label="سعر @drink.Name الجديد"
+                       data-val="true" data-val-required="السعر لازم يكون أكبر من صفر"
+                       data-val-range="السعر لازم يكون أكبر من صفر" data-val-range-min="1" data-val-range-max="100000">
+                }
+                else
+                {
+                @(PriceText(drink.Price)) <text>ج.م</text>
+                }
+              </td>
+              <td>
+                @if (drink.IsAvailable)
+                {
+                <span class="pill p-green">متوفر</span>
+                }
+                else
+                {
+                <span class="pill p-amber">مش موجود حالياً</span>
+                }
+              </td>
+              <td>
+                <div class="acts">
+                  @if (editing)
+                  {
+                  <form id="edit-price-@drink.Id" method="post" asp-controller="Drink" asp-action="UpdatePrice" novalidate>
+                    <input type="hidden" name="Id" value="@drink.Id">
+                    <button type="submit" class="btn sm green">حفظ</button>
+                  </form>
+                  <a class="btn sm ghost-gray" asp-controller="Drink" asp-action="Index">إلغاء</a>
+                  }
+                  else
+                  {
+                  <a class="btn sm ghost" asp-controller="Drink" asp-action="Index" asp-route-editId="@drink.Id">تعديل السعر</a>
+                  <form method="post" asp-controller="Drink" asp-action="ToggleAvailable">
+                    <input type="hidden" name="Id" value="@drink.Id">
+                    <button type="submit" class="btn sm ghost-amber">@(drink.IsAvailable ? "مش موجود حالياً" : "رجّعه متوفر")</button>
+                  </form>
+                  }
+                </div>
+              </td>
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      }
+    </section>
