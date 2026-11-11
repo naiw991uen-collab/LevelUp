@@ -8,6 +8,8 @@
 
 Plug in the drive, double-click `LevelUp.exe`, and the browser opens on the login page. Nothing to install.
 
+**Live demo:** [levelup-ps.runasp.net](http://levelup-ps.runasp.net)
+
 ![.NET](https://img.shields.io/badge/.NET-9.0-512BD4?logo=dotnet&logoColor=white)
 ![ASP.NET Core MVC](https://img.shields.io/badge/ASP.NET%20Core-MVC-512BD4)
 ![EF Core](https://img.shields.io/badge/EF%20Core-9-6DB33F)
@@ -97,6 +99,20 @@ Enums: `GameMode { Single, Multi }`, `SessionStatus { Running, Stopped, Closed }
 ```bash
 git clone https://github.com/naiw991uen-collab/LevelUp.git
 cd LevelUp
+```
+
+Create `LevelUp.PL/appsettings.Local.json` (it is git-ignored) with the admin password.
+It needs at least 6 characters, with an uppercase letter, a lowercase letter, a digit and a symbol:
+
+```json
+{
+  "AdminSeed": {
+    "Password": "<your-admin-password>"
+  }
+}
+```
+
+```bash
 dotnet run --project LevelUp.PL
 ```
 
@@ -104,7 +120,7 @@ The app runs at `http://localhost:5080` and opens the browser automatically.
 On first start it applies the migrations and seeds:
 
 - the default hourly rates for Single and Multi
-- one admin user (user name `admin`; the initial password is in `LevelUp.DAL/DataSeed/IdentityDataSeeding.cs`, so change it before real use)
+- one admin user with user name `admin` and the password from `appsettings.Local.json`
 
 ### Run the tests
 

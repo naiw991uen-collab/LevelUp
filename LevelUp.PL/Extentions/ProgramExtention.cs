@@ -29,11 +29,15 @@ public static class ProgramExtention
 
         await ModeRateDataSeeding.SeedAsync(dbContext, logger);
 
-        await IdentityDataSeeding.SeedIdentityDataAsync(roleManager, userManager, logger);
+        await IdentityDataSeeding.SeedIdentityDataAsync(roleManager, userManager,
+            app.Configuration["AdminSeed:Password"], logger);
     }
 
     public static void OpenBrowserOnStart(this WebApplication app, string path = "/Account/Login")
     {
+        if (Environment.GetEnvironmentVariable("APP_POOL_ID") is not null)
+            return;
+
         app.Lifetime.ApplicationStarted.Register(() =>
         {
             var logger = app.Services.GetRequiredService<ILogger<Program>>();

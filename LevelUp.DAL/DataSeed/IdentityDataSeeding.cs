@@ -10,10 +10,9 @@ public static class IdentityDataSeeding
     private const string AdminRole = "Admin";
 
     private const string AdminUserName = "admin";
-    private const string AdminPassword = "LevelUpPlaystation@2026";
 
     public static async Task SeedIdentityDataAsync(RoleManager<IdentityRole> roleManager,
-        UserManager<ApplicationUser> userManager, ILogger logger)
+        UserManager<ApplicationUser> userManager, string? adminPassword, ILogger logger)
     {
         try
         {
@@ -34,9 +33,15 @@ public static class IdentityDataSeeding
                 return;
             }
 
+            if (string.IsNullOrWhiteSpace(adminPassword))
+            {
+                logger.LogWarning("Admin user not created: set AdminSeed:Password in appsettings.Local.json");
+                return;
+            }
+
             var admin = new ApplicationUser { UserName = AdminUserName };
 
-            var userResult = await userManager.CreateAsync(admin, AdminPassword);
+            var userResult = await userManager.CreateAsync(admin, adminPassword);
 
             if (!userResult.Succeeded)
             {
