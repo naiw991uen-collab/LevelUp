@@ -4,17 +4,17 @@
 
 # LEVEL UP — PlayStation Lounge Management System
 
-**An offline cashier app for PlayStation lounges that runs straight from a USB flash drive.**
+**A cashier app for PlayStation lounges: per-minute billing for Single and Multi play, drinks, and daily reports.**
 
-Plug in the drive, double-click `LevelUp.exe`, and the browser opens on the login page. Nothing to install.
+Runs **online** in the browser, or **offline** straight from a USB flash drive with nothing to install.
 
-**Live demo:** [levelup-ps.runasp.net](http://levelup-ps.runasp.net)
+### 🌐 [Live demo → levelup-ps.runasp.net](http://levelup-ps.runasp.net)
 
 ![.NET](https://img.shields.io/badge/.NET-9.0-512BD4?logo=dotnet&logoColor=white)
 ![ASP.NET Core MVC](https://img.shields.io/badge/ASP.NET%20Core-MVC-512BD4)
 ![EF Core](https://img.shields.io/badge/EF%20Core-9-6DB33F)
-![SQLite](https://img.shields.io/badge/SQLite-offline-003B57?logo=sqlite&logoColor=white)
-![xUnit](https://img.shields.io/badge/tests-xUnit-5E2750)
+![SQLite](https://img.shields.io/badge/SQLite-database-003B57?logo=sqlite&logoColor=white)
+![Hosting](https://img.shields.io/badge/hosted%20on-MonsterASP.NET-2E7D32)
 ![UI](https://img.shields.io/badge/UI-Arabic%20RTL-orange)
 
 </div>
@@ -33,6 +33,7 @@ Plug in the drive, double-click `LevelUp.exe`, and the browser opens on the logi
 | 💰 **Rate history** | Changing the hourly rate affects new sessions only. Running segments keep their original rate. |
 | 🏠 **Rooms & drinks admin** | Add, rename and enable or disable rooms; add drinks, change prices and mark them unavailable. Nothing is hard-deleted. |
 | 🔐 **Login** | ASP.NET Core Identity, sign in by user name. |
+| 🕒 **Egypt time** | All times use Egypt time (DST included), whether the app runs on a local PC or on a server abroad. |
 
 ## 📐 Business rules
 
@@ -52,11 +53,10 @@ A classic 3-layer solution. Each layer depends only on the one below it.
 ```
 LevelUp.PL.slnx
 ├── LevelUp.DAL     Entities, Enums, LevelUpDbContext (Identity), Fluent API configurations,
-│                   Migrations, Generic + specific repositories, Unit of Work, Data seeding
+│                   Migrations, Generic + specific repositories, Unit of Work, Data seeding, AppClock
 ├── LevelUp.BLL     Services per feature (Classes / Interfaces / ViewModel / Validators / Mapping),
 │                   Result & Result<T>, BillingCalculator
-├── LevelUp.PL      MVC Controllers, Razor Views (Arabic RTL), wwwroot, Serilog, startup
-└── LevelUp.Tests   xUnit tests for the billing calculation
+└── LevelUp.PL      MVC Controllers, Razor Views (Arabic RTL), wwwroot, Serilog, startup
 ```
 
 **Patterns and conventions**
@@ -67,6 +67,7 @@ LevelUp.PL.slnx
 - One **AutoMapper** profile and one **FluentValidation** validator per feature, with Arabic error messages.
 - **Serilog** levels: Information for success, Warning for a rejected business rule, Error for exceptions.
 - All actions are plain HTML forms. JavaScript is used only for the live timers.
+- Secrets (admin password, publish profiles) are kept out of Git.
 
 ## 🧰 Tech stack
 
@@ -77,7 +78,7 @@ LevelUp.PL.slnx
 | Validation & mapping | FluentValidation 12, AutoMapper 16 |
 | DI | Scrutor 7 |
 | Logging | Serilog |
-| Tests | xUnit |
+| Hosting | MonsterASP.NET (IIS, WebDeploy) |
 
 ## 🗂️ Domain model
 
@@ -122,13 +123,21 @@ On first start it applies the migrations and seeds:
 - the default hourly rates for Single and Multi
 - one admin user with user name `admin` and the password from `appsettings.Local.json`
 
-### Run the tests
+## 🌐 Deploy online (MonsterASP.NET)
 
-```bash
-dotnet test
-```
+The live demo runs on the free plan of [MonsterASP.NET](https://www.monsterasp.net) (IIS, EU datacenter).
 
-## 💾 Run from a USB flash drive
+1. Create a free website and enable **WebDeploy** under **Visual Studio access**.
+2. Download the publish profile (`.publishSettings`). It is git-ignored because it holds the deploy password.
+3. In Visual Studio: right-click **LevelUp.PL** → **Publish** → **Import Profile** → choose the file → **Publish**
+   (Release, Framework-dependent, Portable).
+4. `appsettings.Local.json` is published with the app, so the admin user is created on the first request.
+
+When the app runs under IIS it skips opening a browser, and IIS decides the port.
+
+> ℹ️ The free plan serves **HTTP only** (HTTPS needs a premium plan), so it's best used as a demo.
+
+## 💾 Run offline from a USB flash drive
 
 Build one self-contained executable (the target PC doesn't need .NET):
 
@@ -150,7 +159,7 @@ LevelUp.PL/
 ├── Controllers/   Account, Device, Session, Dashboard, Drink, Room
 ├── Views/         Razor views + shared _Layout (header, sidebar, theme)
 ├── Filters/       RunningCountFilter (running-sessions badge in the sidebar)
-├── Extentions/    Migrate + seed, Serilog, open browser on start
+├── Extentions/    Migrate + seed, Serilog, open browser on start (skipped under IIS)
 └── wwwroot/       css, js (timer.js), fonts, images
 ```
 
