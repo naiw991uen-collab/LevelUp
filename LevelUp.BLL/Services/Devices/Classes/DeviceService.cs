@@ -5,6 +5,7 @@ using LevelUp.BLL.Services.Devices.Enum;
 using LevelUp.BLL.Services.Devices.Interfaces;
 using LevelUp.BLL.Services.Devices.ViewModel;
 using LevelUp.BLL.Services.Drinks.ViewModel;
+using LevelUp.DAL.Common;
 using LevelUp.DAL.Models;
 using LevelUp.DAL.Models.Enums;
 using LevelUp.DAL.Repositories.Interfaces;
@@ -37,7 +38,7 @@ public class DeviceService : IDeviceService
 
     public async Task<DeviceIndexViewModel> GetIndexAsync(DeviceFilter filter = DeviceFilter.All)
     {
-        var now = DateTime.Now;
+        var now = AppClock.Now;
         var rooms = (await Rooms.GetAllAsync(r => r.IsActive)).OrderBy(r => r.Id).ToList();
         var openSessions = (await Sessions.GetAllOpenAsync()).ToDictionary(s => s.RoomId);
         var waitingDrinks = (await RoomDrinks.GetAllWithoutSessionAsync()).ToLookup(d => d.RoomId);
@@ -75,7 +76,7 @@ public class DeviceService : IDeviceService
             if (rate is null)
                 return Reject(room.Id, $"no rate for {model.Mode}", $"مفيش سعر متسجل لـ{TextHelpers.ModeText(model.Mode)}");
 
-            var now = DateTime.Now;
+            var now = AppClock.Now;
             var session = new GameSession
             {
                 RoomId = room.Id,
@@ -116,7 +117,7 @@ public class DeviceService : IDeviceService
             if (rate is null)
                 return Reject(room.Id, $"no rate for {model.Mode}", $"مفيش سعر متسجل لـ{TextHelpers.ModeText(model.Mode)}");
 
-            var now = DateTime.Now;
+            var now = AppClock.Now;
             current.EndedAt = now;
             session.Segments.Add(new SessionSegment { Mode = model.Mode, HourlyRate = rate.HourlyRate, StartedAt = now });
             await _unitOfWork.SaveChangesAsync();
@@ -222,7 +223,7 @@ public class DeviceService : IDeviceService
             if (session?.Status != SessionStatus.Running || current is null)
                 return Reject(room.Id, "room is not running", $"{room.Name} مش شغالة");
 
-            var now = DateTime.Now;
+            var now = AppClock.Now;
             current.EndedAt = now;
             session.Status = SessionStatus.Stopped;
             await _unitOfWork.SaveChangesAsync();
@@ -250,7 +251,7 @@ public class DeviceService : IDeviceService
             if (rate is null)
                 return Reject(room.Id, $"no rate for {mode}", $"مفيش سعر متسجل لـ{TextHelpers.ModeText(mode)}");
 
-            session.Segments.Add(new SessionSegment { Mode = mode, HourlyRate = rate.HourlyRate, StartedAt = DateTime.Now });
+            session.Segments.Add(new SessionSegment { Mode = mode, HourlyRate = rate.HourlyRate, StartedAt = AppClock.Now });
             session.Status = SessionStatus.Running;
             await _unitOfWork.SaveChangesAsync();
 
@@ -273,7 +274,7 @@ public class DeviceService : IDeviceService
             if (session.Status != SessionStatus.Stopped)
                 return Reject(room.Id, "session is still running", $"{room.Name} لازم توقف الأول");
 
-            var now = DateTime.Now;
+            var now = AppClock.Now;
             var total = BuildCard(room, session, [], now).Total;
 
             session.Status = SessionStatus.Closed;

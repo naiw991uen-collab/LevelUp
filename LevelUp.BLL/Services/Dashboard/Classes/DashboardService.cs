@@ -3,6 +3,7 @@ using LevelUp.BLL.Services.Billing;
 using LevelUp.BLL.Services.Dashboard.Interfaces;
 using LevelUp.BLL.Services.Dashboard.ViewModel;
 using LevelUp.BLL.Services.Devices.ViewModel;
+using LevelUp.DAL.Common;
 using LevelUp.DAL.Models;
 using LevelUp.DAL.Models.Enums;
 using LevelUp.DAL.Repositories.Interfaces;
@@ -25,7 +26,7 @@ public class DashboardService : IDashboardService
 
     public async Task<DashboardViewModel> GetAsync(GameMode mode)
     {
-        var now = DateTime.Now;
+        var now = AppClock.Now;
         var day = BillingCalculator.BusinessDay(now);
 
         var rooms = (await _unitOfWork.GetRepository<Room>().GetAllAsync()).OrderBy(r => r.Id).ToList();
@@ -97,7 +98,7 @@ public class DashboardService : IDashboardService
             {
                 Mode = model.Mode,
                 HourlyRate = newRate,
-                EffectiveFrom = DateTime.Now
+                EffectiveFrom = AppClock.Now
             });
             await _unitOfWork.SaveChangesAsync();
 

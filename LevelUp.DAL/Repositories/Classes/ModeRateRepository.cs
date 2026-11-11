@@ -1,3 +1,4 @@
+using LevelUp.DAL.Common;
 using LevelUp.DAL.Contexts;
 using LevelUp.DAL.Models;
 using LevelUp.DAL.Models.Enums;
@@ -14,7 +15,7 @@ public class ModeRateRepository : Repository<ModeRate>, IModeRateRepository
 
     public async Task<ModeRate?> GetCurrentAsync(GameMode mode, CancellationToken ct = default)
     {
-        var now = DateTime.Now;
+        var now = AppClock.Now;
 
         return await _dbContext.ModeRates
             .AsNoTracking()

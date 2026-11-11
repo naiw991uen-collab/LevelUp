@@ -1,3 +1,4 @@
+using LevelUp.DAL.Common;
 using LevelUp.DAL.Contexts;
 using LevelUp.DAL.Models;
 using LevelUp.DAL.Models.Enums;
@@ -27,7 +28,7 @@ public static class ModeRateDataSeeding
                 {
                     Mode = mode,
                     HourlyRate = hourlyRate,
-                    EffectiveFrom = DateTime.Now
+                    EffectiveFrom = AppClock.Now
                 });
 
                 logger.LogInformation("Mode rate seeded: {Mode} = {HourlyRate} per hour", mode, hourlyRate);

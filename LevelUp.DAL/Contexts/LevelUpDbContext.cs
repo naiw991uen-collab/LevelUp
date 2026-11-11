@@ -1,5 +1,6 @@
 using System.Reflection;
 using LevelUp.DAL.Applications;
+using LevelUp.DAL.Common;
 using LevelUp.DAL.Models;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -38,7 +39,7 @@ public class LevelUpDbContext : IdentityDbContext<ApplicationUser>
 
     private void SetAuditDates()
     {
-        var now = DateTime.Now;
+        var now = AppClock.Now;
 
         foreach (var entry in ChangeTracker.Entries<BaseEntity>())
         {

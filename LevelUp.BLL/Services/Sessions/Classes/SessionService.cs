@@ -5,6 +5,7 @@ using LevelUp.BLL.Services.Rooms.ViewModel;
 using LevelUp.BLL.Services.Sessions.Enum;
 using LevelUp.BLL.Services.Sessions.Interfaces;
 using LevelUp.BLL.Services.Sessions.ViewModel;
+using LevelUp.DAL.Common;
 using LevelUp.DAL.Models;
 using LevelUp.DAL.Models.Enums;
 using LevelUp.DAL.Repositories.Interfaces;
@@ -24,7 +25,7 @@ public class SessionService : ISessionService
 
     public async Task<SessionIndexViewModel> GetIndexAsync(SessionFilterViewModel filter)
     {
-        var day = filter.Date ?? BillingCalculator.BusinessDay(DateTime.Now);
+        var day = filter.Date ?? BillingCalculator.BusinessDay(AppClock.Now);
 
         var sessions = await _unitOfWork.GameSessionRepository
             .GetClosedAsync(fromDay: day, toDay: day, roomId: filter.RoomId);
